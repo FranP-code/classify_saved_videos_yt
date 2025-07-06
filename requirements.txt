@@ -1,0 +1,4 @@
+# Python==3.11.10
+opencv-python==4.11.0.86
+pillow==11.3.0
+PyAutoGUI==0.9.54
