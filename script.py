@@ -25,7 +25,7 @@ pgui.press("enter")
 # cambiar dependiendo de cuanto tarde en cargarte yt
 time.sleep(5)
 
-videos = 4191
+videos = int(input('number of videos: '))
 
 while videos != 0:
 
