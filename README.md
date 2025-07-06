@@ -28,4 +28,4 @@ Reemplaza la imagen del icono de tu navegador en la carpeta `img` con una captur
 El script utiliza valores de `sleep` y `duration` para esperar la respuesta de tu PC. Puede que necesites aumentar o disminuir estos valores dependiendo de la velocidad de tu computadora y conexión a internet.
 
 ### ▶️ Ejecuta el Script  
-Ejecuta el script y sigue las instrucciones en pantalla. Presiona `q` en cualquier momento
+Ejecuta el script y sigue las instrucciones en pantalla. Presiona `q` en cualquier momento si quieres detenerlo.
