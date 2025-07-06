@@ -2,19 +2,22 @@ import pyautogui as pgui
 import time
 import keyboard as kb
 
-# colocar el nombre de tu navegador, basado en el nombre de la imagen de su respectivo icono
+
+quit = False
+
+# Enter the name of your browser, based on the name of its icon image.
 browser = 'brave'
 
 browser_loc = pgui.locateCenterOnScreen(f'img/{browser}.png', confidence=0.8)
 
-pgui.moveTo(browser_loc, duration=0.2)
-time.sleep(0.2)
-pgui.click()
-
-# cambia el tiempo dependiendo de cuanto tarde en abrir tu navegador
-time.sleep(2)
-
-
+if browser_loc:
+    pgui.moveTo(browser_loc, duration=0.2)
+    time.sleep(0.2)
+    pgui.click()
+    time.sleep(2)
+else:
+    print("Browser icon not found.")
+    exit()
 
 pgui.hotkey('ctrl', 't')
 
@@ -22,27 +25,32 @@ pgui.write('https://www.youtube.com/playlist?list=WL')
 time.sleep(0.05)
 pgui.press("enter")
 
-# cambiar dependiendo de cuanto tarde en cargarte yt
+# change depending on how long it takes to load yt
 time.sleep(5)
 
-videos = int(input('number of videos: '))
-
-while videos != 0:
+while not quit:
 
     if kb.is_pressed('q'):
         print(':(')
-        break
+        quit = True
+        continue
     
     opt_loc = pgui.locateCenterOnScreen('img/options.png', confidence=0.8)
 
-    pgui.moveTo(opt_loc, duration=0.2)
-    pgui.click()
-    time.sleep(0.2)
+    if opt_loc:
+        pgui.moveTo(opt_loc, duration=0.2)
+        pgui.click()
+        time.sleep(0.2)
+    else:
+        print('options button not founded')
+        break
 
     del_loc = pgui.locateCenterOnScreen('img/delete.png', confidence=0.8)
 
-    pgui.moveTo(del_loc, duration=0.2)
-    pgui.click()
-    time.sleep(0.2)
-
-    videos -= 1
+    if del_loc:
+        pgui.moveTo(del_loc, duration=0.2)
+        pgui.click()
+        time.sleep(0.2)
+    else:
+        print('delete button not founded')
+        break
