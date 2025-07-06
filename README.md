@@ -11,6 +11,7 @@ Replace the browser icon image in the `img` folder with a screenshot of your bro
 The script uses `sleep` and `duration` values to wait for your PC to respond. You may need to increase or decrease these values depending on your computer's speed and internet connection.
 
 ### ▶️ Run the Script  
+For the script to work, it is essential that you have your browser pinned to your taskbar, otherwise you will not be able to find the icon.
 Execute the script and follow the on-screen instructions. Press `q` at any time to stop the script.
 
 ---
@@ -27,5 +28,6 @@ Reemplaza la imagen del icono de tu navegador en la carpeta `img` con una captur
 ### ⏱️ Ajusta los Tiempos  
 El script utiliza valores de `sleep` y `duration` para esperar la respuesta de tu PC. Puede que necesites aumentar o disminuir estos valores dependiendo de la velocidad de tu computadora y conexión a internet.
 
-### ▶️ Ejecuta el Script  
+### ▶️ Ejecuta el Script 
+Para que el script funcione, es indispensable que tengas tu navegador anclado a tu barra de tareas, sino no podra encontrar el icono. 
 Ejecuta el script y sigue las instrucciones en pantalla. Presiona `q` en cualquier momento si quieres detenerlo.
