@@ -14,6 +14,7 @@ if browser_loc:
     pgui.moveTo(browser_loc, duration=0.2)
     time.sleep(0.2)
     pgui.click()
+    # Change the time depending on how long it takes to open your browser
     time.sleep(2)
 else:
     print("Browser icon not found.")
