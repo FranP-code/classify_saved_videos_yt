@@ -1,6 +1,7 @@
 import pyautogui as pgui
 import time
 from pynput import keyboard as kb
+import sys
 
 
 quit = False
@@ -25,14 +26,14 @@ browser_img = 'brave.png'
 
 browser_loc = pgui.locateCenterOnScreen(f'img/{browser_img}', confidence=0.8)
 
-pgui.moveTo(browser_loc, duration=0.2)
-time.sleep(0.2)
-pgui.click()
-
-# Change the time depending on how long it takes to open your browser
-time.sleep(2)
-
-
+if browser_loc:
+    pgui.moveTo(browser_loc, duration=0.2)
+    pgui.click()
+    # Change the time depending on how long it takes to open your browser
+    time.sleep(2)
+else:
+    print("Browser icon not found.")
+    sys.exit('closing script')
 
 pgui.hotkey('ctrl', 't')
 
