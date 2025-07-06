@@ -23,15 +23,15 @@ listener.start()
 
 # Enter the name of your browser, based on the name of its icon image.
 browser_img = 'brave.png'
+try:
+    browser_loc = pgui.locateCenterOnScreen(f'img/{browser_img}', confidence=0.8)
 
-browser_loc = pgui.locateCenterOnScreen(f'img/{browser_img}', confidence=0.8)
-
-if browser_loc:
-    pgui.moveTo(browser_loc, duration=0.2)
-    pgui.click()
-    # Change the time depending on how long it takes to open your browser
-    time.sleep(2)
-else:
+    if browser_loc:
+        pgui.moveTo(browser_loc, duration=0.2)
+        pgui.click()
+        # Change the time depending on how long it takes to open your browser
+        time.sleep(2)
+except (pgui.ImageNotFoundException, Exception):
     print("Browser icon not found.")
     sys.exit('closing script')
 
