@@ -1,8 +1,10 @@
 import pyautogui as pgui
 import time
-# import keyboard as kb
+import keyboard as kb
 import sys
 
+
+playlist_url = 'https://www.youtube.com/playlist?list=WL'
 
 half_left = (
     0,
@@ -94,7 +96,7 @@ else:
 
 pgui.hotkey('ctrl', 't')
 
-pgui.write('https://www.youtube.com/playlist?list=WL')
+pgui.write(playlist_url)
 time.sleep(0.05)
 pgui.press("enter")
 
@@ -105,14 +107,14 @@ if __name__ == '__main__':
     counter = 0
 
     while True:
-        # if kb.is_pressed('q'):
-        #     print(':(')
-        #     break
+        if kb.is_pressed('q'):
+            print(':(')
+            break
 
         if counter > 0 and (counter % 90) == 0:
             pgui.hotkey('ctrl', 'w')
             pgui.hotkey('ctrl', 't')
-            pgui.write('https://www.youtube.com/playlist?list=WL')
+            pgui.write(playlist_url)
             pgui.press("enter")
             time.sleep(8)
         
