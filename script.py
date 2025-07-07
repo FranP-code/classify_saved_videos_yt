@@ -4,6 +4,8 @@ from pynput import keyboard as kb
 import sys
 
 
+playlist_url = 'https://www.youtube.com/playlist?list=WL'
+
 quit = False
 
 half_left = (
@@ -86,7 +88,7 @@ def change_to_not_available():
         return True
 
     except:
-        print(f"Critical error in change_to_not_available: {e}")
+        print(f"Critical error in change_to_not_available")
         return False
 
 
@@ -104,7 +106,7 @@ except Exception as e:
 
 # Open YouTube
 pgui.hotkey('ctrl', 't')
-pgui.write('https://www.youtube.com/playlist?list=WL')
+pgui.write(playlist_url)
 pgui.press("enter")
 time.sleep(5)
 
@@ -116,13 +118,12 @@ if __name__ == '__main__':
         if counter > 0 and (counter % 90) == 0:
             pgui.hotkey('ctrl', 'w')
             pgui.hotkey('ctrl', 't')
-            pgui.write('https://www.youtube.com/playlist?list=WL')
+            pgui.write(playlist_url)
             pgui.press("enter")
             time.sleep(8)
         
 
         try:
-
             success = locate_img('options.png', sleep_time=0.2, confidence=0.8, gray_scale=True, region=half_right)
 
             if not success:
