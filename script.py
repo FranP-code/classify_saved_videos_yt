@@ -115,6 +115,7 @@ if __name__ == '__main__':
     counter = 0
 
     while not quit:
+        # restart tab to free up resources
         if counter > 0 and (counter % 90) == 0:
             pgui.hotkey('ctrl', 'w')
             pgui.hotkey('ctrl', 't')
