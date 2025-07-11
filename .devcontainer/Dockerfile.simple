@@ -1,0 +1,56 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    curl \
+    wget \
+    git \
+    sudo \
+    xvfb \
+    x11vnc \
+    fluxbox \
+    novnc \
+    websockify \
+    firefox \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Ollama
+RUN curl -fsSL https://ollama.ai/install.sh | sh
+
+# Create user
+RUN useradd -m -s /bin/bash vscode && \
+    usermod -aG sudo vscode && \
+    echo "vscode ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+WORKDIR /workspace
+RUN chown vscode:vscode /workspace
+
+USER vscode
+RUN python3 -m pip install --user --upgrade pip
+
+ENV PATH="/home/vscode/.local/bin:$PATH"
+
+# Simple startup script
+RUN echo '#!/bin/bash\n\
+echo "🎬 Starting YouTube Video Classifier..."\n\
+Xvfb :1 -screen 0 1920x1080x24 &\n\
+sleep 2\n\
+export DISPLAY=:1\n\
+fluxbox &\n\
+x11vnc -display :1 -nopw -listen localhost -quiet &\n\
+/usr/share/novnc/utils/launch.sh --vnc localhost:5900 --listen 6080 &\n\
+echo "🖥️  GUI: http://localhost:6080/vnc.html"\n\
+ollama serve &\n\
+echo "⏳ Starting Ollama..."\n\
+sleep 10\n\
+echo "📥 Pulling model..."\n\
+ollama pull qwen2.5vl:7b\n\
+echo "✅ Ready! Use: python test_ollama.py"\n\
+exec sleep infinity\n' > /home/vscode/start-simple.sh && \
+    chmod +x /home/vscode/start-simple.sh
+
+CMD ["/bin/bash"]

@@ -1,0 +1,26 @@
+{
+  "name": "YouTube Video Classifier",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "youtube-classifier",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.pylint"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/bin/python3",
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+
+  "forwardPorts": [11434, 6080],
+  
+  "postCreateCommand": "pip install --user -r requirements.txt && sh /home/vscode/start-services.sh",
+
+  "remoteUser": "vscode"
+}
