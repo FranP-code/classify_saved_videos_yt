@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  youtube-classifier:
+    build: .
+    volumes:
+      - .:/workspace
+      - ollama-data:/home/user/.ollama
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    ports:
+      - "11434:11434"
+      - "6080:6080"
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - OLLAMA_HOST=0.0.0.0
+    privileged: true
+    stdin_open: true
+    tty: true
+    working_dir: /workspace
+
+  ollama-standalone:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama-data:/root/.ollama
+    ports:
+      - "11435:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    restart: unless-stopped
+
+volumes:
+  ollama-data:
