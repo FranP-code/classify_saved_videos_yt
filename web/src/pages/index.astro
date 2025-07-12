@@ -22,6 +22,6 @@ import { parseCSV } from '@/utils/csvParser';
 	</head>
 
 	<body class="min-h-screen bg-background">
-		<VideoClassifierApp client:load videos={videos}  />
+		<VideoClassifierApp client:only videos={videos}  />
 	</body>
 </html>
