@@ -4,7 +4,7 @@ import type { VideoData } from '../types/video';
 import { formatDuration, formatDate } from '../utils/csvParser';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Tooltip } from './ui/tooltip';
+import { Tooltip,TooltipContent, TooltipTrigger  } from './ui/tooltip';
 
 interface VirtualTableProps {
   data: VideoData[];
@@ -74,24 +74,32 @@ export function VirtualTable({ data }: VirtualTableProps) {
                   <div className="grid grid-cols-12 gap-3 px-4 py-3 items-center min-h-[80px]">
                     {/* Video Info */}
                     <div className="col-span-3 space-y-2 min-w-0">
-                      <Tooltip content={video.video_title}>
-                        <h3 className="font-medium text-sm leading-tight truncate">
+                      <Tooltip>
+                        <TooltipContent>
+                          {video.video_title}
+                        </TooltipContent>
+                        <TooltipTrigger>
+                        <h3 className="text-start font-medium text-sm leading-tight truncate sm:w-[150px] lg:w-[200px] xl:w-[250px] 2xl:w-[300px]">
                           {video.video_title}
                         </h3>
+                        </TooltipTrigger>
                       </Tooltip>
                       <div className="flex flex-wrap gap-1">
                         {video.detailed_subtags.split(',').slice(0, 2).map((tag, i) => (
-                          <Tooltip key={i} content={tag.trim()}>
                             <Badge variant="secondary" className="text-xs max-w-20 truncate">
                               {tag.trim()}
                             </Badge>
-                          </Tooltip>
                         ))}
                         {video.detailed_subtags.split(',').length > 2 && (
-                          <Tooltip content={`+${video.detailed_subtags.split(',').length - 2} more tags`}>
+                          <Tooltip>
+                            <TooltipContent>
+                              {video.detailed_subtags.split(',').slice(2).join(', ')}
+                            </TooltipContent>
+                            <TooltipTrigger>
                             <Badge variant="outline" className="text-xs">
                               +{video.detailed_subtags.split(',').length - 2}
                             </Badge>
+                            </TooltipTrigger>
                           </Tooltip>
                         )}
                       </div>
