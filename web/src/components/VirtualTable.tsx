@@ -4,6 +4,7 @@ import type { VideoData } from '../types/video';
 import { formatDuration, formatDate } from '../utils/csvParser';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { Tooltip } from './ui/tooltip';
 
 interface VirtualTableProps {
   data: VideoData[];
@@ -25,15 +26,15 @@ export function VirtualTable({ data }: VirtualTableProps) {
   return (
     <div className="border rounded-lg overflow-hidden">
       {/* Table Header */}
-      <div className="bg-muted/50 border-b p-4">
-        <div className="grid grid-cols-12 gap-4 text-sm font-medium text-muted-foreground">
-          <div className="col-span-2">Video</div>
-          <div className="col-span-2">Channel</div>
-          <div className="col-span-2">Classification</div>
-          <div className="col-span-2">Language</div>
-          <div className="col-span-1">Duration</div>
-          <div className="col-span-2">Date</div>
-          <div className="col-span-1">Actions</div>
+      <div className="bg-muted/50 border-b">
+        <div className="grid grid-cols-12 gap-3 px-4 py-3 text-sm font-medium text-muted-foreground">
+          <div className="col-span-3 flex items-center">Video</div>
+          <div className="col-span-2 flex items-center">Channel</div>
+          <div className="col-span-2 flex items-center">Classification</div>
+          <div className="col-span-1 flex items-center">Language</div>
+          <div className="col-span-1 flex items-center">Duration</div>
+          <div className="col-span-2 flex items-center">Date</div>
+          <div className="col-span-1 flex items-center">Actions</div>
         </div>
       </div>
 
@@ -69,51 +70,66 @@ export function VirtualTable({ data }: VirtualTableProps) {
                   transform: `translateY(${virtualItem.start}px)`,
                 }}
               >
-                <div className="border-b p-4 hover:bg-muted/50 transition-colors">
-                  <div className="grid grid-cols-12 gap-4 items-center">
+                <div className="border-b hover:bg-muted/50 transition-colors">
+                  <div className="grid grid-cols-12 gap-3 px-4 py-3 items-center min-h-[80px]">
                     {/* Video Info */}
-                    <div className="col-span-2 space-y-1">
-                      <h3 className="font-medium text-sm leading-tight line-clamp-2">
-                        {video.video_title}
-                      </h3>
+                    <div className="col-span-3 space-y-2 min-w-0">
+                      <Tooltip content={video.video_title}>
+                        <h3 className="font-medium text-sm leading-tight truncate">
+                          {video.video_title}
+                        </h3>
+                      </Tooltip>
                       <div className="flex flex-wrap gap-1">
-                        {video.detailed_subtags.split(',').slice(0, 3).map((tag, i) => (
-                          <Badge key={i} variant="secondary" className="text-xs">
-                            {tag.trim()}
-                          </Badge>
+                        {video.detailed_subtags.split(',').slice(0, 2).map((tag, i) => (
+                          <Tooltip key={i} content={tag.trim()}>
+                            <Badge variant="secondary" className="text-xs max-w-20 truncate">
+                              {tag.trim()}
+                            </Badge>
+                          </Tooltip>
                         ))}
+                        {video.detailed_subtags.split(',').length > 2 && (
+                          <Tooltip content={`+${video.detailed_subtags.split(',').length - 2} more tags`}>
+                            <Badge variant="outline" className="text-xs">
+                              +{video.detailed_subtags.split(',').length - 2}
+                            </Badge>
+                          </Tooltip>
+                        )}
                       </div>
                     </div>
 
                     {/* Channel */}
-                    <div className="col-span-2">
-                      <div className="text-sm font-medium">{video.channel_name}</div>
-                      <div className="text-xs text-muted-foreground">{video.playlist_name}</div>
+                    <div className="col-span-2 min-w-0">
+                      <Tooltip content={video.channel_name}>
+                        <div className="text-sm font-medium truncate">{video.channel_name}</div>
+                      </Tooltip>
+                      <Tooltip content={video.playlist_name}>
+                        <div className="text-xs text-muted-foreground truncate">{video.playlist_name}</div>
+                      </Tooltip>
                     </div>
 
                     {/* Classification */}
-                    <div className="col-span-2">
-                      <Badge variant="default" className="text-xs">
+                    <div className="col-span-2 min-w-0">
+                      <Badge variant="default" className="text-xs truncate max-w-full">
                         {video.classification}
                       </Badge>
                     </div>
 
                     {/* Language */}
-                    <div className="col-span-2">
-                      <Badge variant="outline" className="text-xs">
+                    <div className="col-span-1 min-w-0">
+                      <Badge variant="outline" className="text-xs truncate max-w-full">
                         {video.language}
                       </Badge>
                     </div>
 
                     {/* Duration */}
-                    <div className="col-span-1 text-sm">
+                    <div className="col-span-1 text-sm font-mono">
                       {formatDuration(video.video_length_seconds)}
                     </div>
 
                     {/* Date */}
-                    <div className="col-span-2 space-y-1">
+                    <div className="col-span-2 space-y-1 min-w-0">
                       <div className="text-sm">{formatDate(video.video_date)}</div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-muted-foreground truncate">
                         Added: {formatDate(video.timestamp)}
                       </div>
                     </div>
@@ -138,7 +154,7 @@ export function VirtualTable({ data }: VirtualTableProps) {
       </div>
 
       {/* Footer */}
-      <div className="bg-muted/50 border-t p-4">
+      <div className="bg-muted/50 border-t px-4 py-3">
         <div className="text-sm text-muted-foreground text-center">
           Showing {data.length} videos
         </div>
