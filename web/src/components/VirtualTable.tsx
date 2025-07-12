@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
-import { Virtualizer, VirtualizerOptions } from '@tanstack/virtual-core';
+import { Virtualizer, type VirtualizerOptions } from '@tanstack/virtual-core';
 import type { VideoData } from '../types/video';
 import { formatDuration, formatDate } from '../utils/csvParser';
 import { Badge } from './ui/badge';
