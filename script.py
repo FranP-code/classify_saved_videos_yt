@@ -22,6 +22,7 @@ from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.webdriver.common.keys import Keys
 
 # Load configuration
 config = configparser.ConfigParser()
@@ -47,6 +48,39 @@ Instructions:
 3. Classification names should be concise (1-3 words) and descriptive.
 4. Examples of good classifications: "Tech Reviews", "Cooking", "Gaming", "Education", "Music", "Comedy", etc.
 5. Respond with ONLY the classification name, nothing else.
+"""
+
+LANGUAGE_DETECTION_PROMPT = """
+Please detect the language of this YouTube video based on its title and thumbnail.
+
+Video Title: {video_title}
+
+Instructions:
+1. Analyze the title text to determine the primary language
+2. Consider any text visible in the thumbnail image
+3. Respond with the language name in English (e.g., "English", "Spanish", "French", "Japanese", etc.)
+4. If multiple languages are present, choose the dominant one
+5. If uncertain, respond with "Unknown"
+6. Respond with ONLY the language name, nothing else.
+"""
+
+DETAILED_SUBTAGS_PROMPT = """
+Please analyze this YouTube video and provide 5-10 specific sub-tags based on its title and thumbnail.
+
+Video Title: {video_title}
+Main Classification: {classification}
+
+Instructions:
+1. Provide 5-10 specific sub-tags that describe the video content
+2. Sub-tags should be single words or short phrases (1-2 words max)
+3. Focus on: format, style, difficulty level, specific topics
+4. Examples: tutorial, review, beginner, advanced, tips, guide, demo, comparison, analysis
+5. Separate sub-tags with commas
+6 In case of a game, include specific game titles and genres
+7 If the video is a music video, include specific genres and artists
+8 If the video is a movie or TV show review, include specific titles and genres
+9. If the video is a review or analysis, include specific products and brands
+10. Respond with ONLY the comma-separated list, nothing else
 """
 
 playlist_url = config.get(
@@ -195,7 +229,7 @@ def init_browser():
                     shutil.rmtree(wdm_cache_dir, ignore_errors=True)
 
                 # Initialize ChromeDriverManager with explicit OS detection
-                from webdriver_manager.core.utils import ChromeType
+                from webdriver_manager.core.os_manager import ChromeType
                 manager = ChromeDriverManager(
                     chrome_type=ChromeType.CHROMIUM if "chromium" in (
                         chrome_binary or "").lower() else ChromeType.GOOGLE)
@@ -296,6 +330,218 @@ def init_browser():
         return False
 
 
+def detect_video_language(video_title, thumbnail_path):
+    """Use Ollama to detect the language of the video."""
+    try:
+        # Convert image to base64
+        with open(thumbnail_path, "rb") as image_file:
+            image_data = base64.b64encode(image_file.read()).decode('utf-8')
+
+        # Prepare the prompt
+        prompt = LANGUAGE_DETECTION_PROMPT.format(video_title=video_title)
+
+        # Make request to Ollama
+        response = requests.post(
+            f'{OLLAMA_HOST}/api/generate',
+            json={
+                'model': OLLAMA_MODEL,
+                'prompt': prompt,
+                'images': [image_data],
+                'stream': False
+            }
+        )
+
+        if response.status_code == 200:
+            result = response.json()
+            language = result['response'].strip()
+            return language
+        else:
+            print(f"Error from Ollama for language detection: {response.status_code}")
+            return "Unknown"
+
+    except Exception as e:
+        print(f"Error detecting language: {e}")
+        return "Unknown"
+
+
+def extract_channel_name(video_element):
+    """Extract the channel name from the video element."""
+    try:
+        channel_selectors = [
+            "#text > a",
+            "#channel-name #text > a",
+            ".ytd-channel-name a"
+        ]
+        
+        for selector in channel_selectors:
+            try:
+                channel_element = video_element.find_element(By.CSS_SELECTOR, selector)
+                # Check if it has the expected classes
+                classes = channel_element.get_attribute("class")
+                if "yt-simple-endpoint" in classes and "style-scope" in classes and "yt-formatted-string" in classes:
+                    channel_name = channel_element.text.strip()
+                    if channel_name:
+                        return channel_name
+            except BaseException:
+                continue
+        
+        # Fallback: try without class checking
+        for selector in channel_selectors:
+            try:
+                channel_element = video_element.find_element(By.CSS_SELECTOR, selector)
+                channel_name = channel_element.text.strip()
+                if channel_name:
+                    return channel_name
+            except BaseException:
+                continue
+        
+        return "Unknown Channel"
+    
+    except Exception as e:
+        print(f"Error extracting channel name: {e}")
+        return "Unknown Channel"
+
+
+def extract_video_length(video_element):
+    """Extract video length and convert to Excel-readable format (total seconds)."""
+    try:
+        length_selector = "#overlays > ytd-thumbnail-overlay-time-status-renderer > div.thumbnail-overlay-badge-shape.style-scope.ytd-thumbnail-overlay-time-status-renderer > badge-shape > div"
+        
+        try:
+            length_element = video_element.find_element(By.CSS_SELECTOR, length_selector)
+            length_text = length_element.text.strip()
+            
+            # Parse time format (e.g., "1:23", "12:34", "1:23:45")
+            time_parts = length_text.split(':')
+            total_seconds = 0
+            
+            if len(time_parts) == 2:  # MM:SS format
+                minutes, seconds = map(int, time_parts)
+                total_seconds = minutes * 60 + seconds
+            elif len(time_parts) == 3:  # HH:MM:SS format
+                hours, minutes, seconds = map(int, time_parts)
+                total_seconds = hours * 3600 + minutes * 60 + seconds
+            
+            return total_seconds
+        
+        except BaseException:
+            # Try alternative selectors
+            alt_selectors = [
+                ".ytd-thumbnail-overlay-time-status-renderer .badge-shape div",
+                "#overlays .thumbnail-overlay-badge-shape div",
+                ".thumbnail-overlay-time-status-renderer badge-shape div"
+            ]
+            
+            for selector in alt_selectors:
+                try:
+                    length_element = video_element.find_element(By.CSS_SELECTOR, selector)
+                    length_text = length_element.text.strip()
+                    
+                    # Parse time format
+                    time_parts = length_text.split(':')
+                    total_seconds = 0
+                    
+                    if len(time_parts) == 2:  # MM:SS format
+                        minutes, seconds = map(int, time_parts)
+                        total_seconds = minutes * 60 + seconds
+                    elif len(time_parts) == 3:  # HH:MM:SS format
+                        hours, minutes, seconds = map(int, time_parts)
+                        total_seconds = hours * 3600 + minutes * 60 + seconds
+                    
+                    return total_seconds
+                
+                except BaseException:
+                    continue
+        
+        return 0  # Default if no length found
+    
+    except Exception as e:
+        print(f"Error extracting video length: {e}")
+        return 0
+
+
+def extract_video_date(video_element):
+    """Extract video date and convert to datetime format."""
+    try:
+        date_selector = "#video-info > span:nth-child(3)"
+        
+        try:
+            date_element = video_element.find_element(By.CSS_SELECTOR, date_selector)
+            date_text = date_element.text.strip()
+            
+            # Parse natural date format (e.g., "2 days ago", "1 week ago", "3 months ago")
+            date_datetime = parse_natural_date(date_text)
+            return date_datetime.strftime('%Y-%m-%d %H:%M:%S')
+        
+        except BaseException:
+            # Try alternative selectors
+            alt_selectors = [
+                "#video-info span:nth-child(3)",
+                ".ytd-video-meta-block span:nth-child(3)",
+                "#metadata-line span:nth-child(3)"
+            ]
+            
+            for selector in alt_selectors:
+                try:
+                    date_element = video_element.find_element(By.CSS_SELECTOR, selector)
+                    date_text = date_element.text.strip()
+                    
+                    date_datetime = parse_natural_date(date_text)
+                    return date_datetime.strftime('%Y-%m-%d %H:%M:%S')
+                
+                except BaseException:
+                    continue
+        
+        return "Unknown Date"
+    
+    except Exception as e:
+        print(f"Error extracting video date: {e}")
+        return "Unknown Date"
+
+
+def parse_natural_date(date_text):
+    """Parse natural date format to datetime object."""
+    try:
+        import re
+        from datetime import datetime, timedelta
+        
+        current_time = datetime.now()
+        date_text = date_text.lower()
+        
+        # Remove common prefixes/suffixes
+        date_text = re.sub(r'^(published|uploaded|added)\s+', '', date_text)
+        date_text = re.sub(r'\s+ago$', '', date_text)
+        
+        # Extract number and unit
+        match = re.search(r'(\d+)\s*(second|minute|hour|day|week|month|year)s?', date_text)
+        
+        if match:
+            number = int(match.group(1))
+            unit = match.group(2)
+            
+            if unit == 'second':
+                return current_time - timedelta(seconds=number)
+            elif unit == 'minute':
+                return current_time - timedelta(minutes=number)
+            elif unit == 'hour':
+                return current_time - timedelta(hours=number)
+            elif unit == 'day':
+                return current_time - timedelta(days=number)
+            elif unit == 'week':
+                return current_time - timedelta(weeks=number)
+            elif unit == 'month':
+                return current_time - timedelta(days=number * 30)  # Approximate
+            elif unit == 'year':
+                return current_time - timedelta(days=number * 365)  # Approximate
+        
+        # If no match, return current time
+        return current_time
+    
+    except Exception as e:
+        print(f"Error parsing natural date: {e}")
+        return datetime.now()
+
+
 def get_video_info_web():
     """Extract video information using web scraping from playlist items."""
     global driver
@@ -323,7 +569,7 @@ def get_video_info_web():
 
         if not video_element:
             print("Could not find video element in playlist")
-            return None, None, None
+            return None, None, None, None, None, None, None
 
         # Extract video title
         video_title = None
@@ -348,6 +594,18 @@ def get_video_info_web():
             video_title = f"Video_{int(time.time())}"
 
         print(f"Extracted video title: {video_title}")
+
+        # Extract channel name
+        channel_name = extract_channel_name(video_element)
+        print(f"Extracted channel name: {channel_name}")
+
+        # Extract video length
+        video_length = extract_video_length(video_element)
+        print(f"Extracted video length: {video_length} seconds")
+
+        # Extract video date
+        video_date = extract_video_date(video_element)
+        print(f"Extracted video date: {video_date}")
 
         # Get video URL using share functionality
         video_url = None
@@ -409,6 +667,7 @@ def get_video_info_web():
                     time.sleep(0.5)
                 except BaseException:
                     # Press Escape key as fallback
+                    from selenium.webdriver.common.keys import Keys
                     driver.find_element(
                         By.TAG_NAME, "body").send_keys(
                         Keys.ESCAPE)
@@ -464,11 +723,11 @@ def get_video_info_web():
             except BaseException:
                 thumbnail_path = None
 
-        return video_title, video_url, thumbnail_path
+        return video_title, video_url, thumbnail_path, channel_name, video_length, video_date
 
     except Exception as e:
         print(f"Error extracting video info: {e}")
-        return None, None, None
+        return None, None, None, None, None, None
 
 
 def navigate_to_next_video():
@@ -477,7 +736,7 @@ def navigate_to_next_video():
     try:
         # The next video becomes the first video after removal
         # So we don't need to navigate, just wait for the page to update
-        time.sleep(2)
+        time.sleep(3)
 
         # Check if there are still videos in the playlist
         try:
@@ -558,8 +817,8 @@ def init_csv():
     if not os.path.exists(classifications_csv):
         with open(classifications_csv, 'w', newline='', encoding='utf-8') as file:
             writer = csv.writer(file)
-            writer.writerow(['video_title', 'video_url',
-                            'thumbnail_url', 'classification', 'timestamp'])
+            writer.writerow(['video_title', 'video_url', 'thumbnail_url', 'classification', 
+                           'language', 'channel_name', 'video_length_seconds', 'video_date', 'detailed_subtags', 'image_data', 'timestamp'])
         print(f"Created {classifications_csv}")
 
 
@@ -576,16 +835,14 @@ def load_existing_classifications():
         return set()
 
 
-def save_classification(video_title, video_url, thumbnail_url, classification):
+def save_classification(video_title, video_url, thumbnail_url, classification, language, channel_name, video_length, video_date, detailed_subtags, image_data):
     """Save a video classification to CSV."""
     try:
         with open(classifications_csv, 'a', newline='', encoding='utf-8') as file:
             writer = csv.writer(file)
-            writer.writerow([video_title,
-                             video_url,
-                             thumbnail_url,
-                             classification,
-                             time.strftime('%Y-%m-%d %H:%M:%S')])
+            writer.writerow([video_title, video_url, thumbnail_url, classification, 
+                           language, channel_name, video_length, video_date, detailed_subtags, image_data,
+                           time.strftime('%Y-%m-%d %H:%M:%S')])
         print(f"Saved classification: {video_title} -> {classification}")
     except Exception as e:
         print(f"Error saving classification: {e}")
@@ -638,6 +895,42 @@ def classify_video_with_ollama(
         print(f"Error classifying video: {e}")
         return "Uncategorized"
 
+
+def generate_detailed_subtags(video_title, thumbnail_path, classification):
+    """Use Ollama to generate detailed sub-tags for the video."""
+    try:
+        # Convert image to base64
+        with open(thumbnail_path, "rb") as image_file:
+            image_data = base64.b64encode(image_file.read()).decode('utf-8')
+
+        # Prepare the prompt
+        prompt = DETAILED_SUBTAGS_PROMPT.format(
+            video_title=video_title,
+            classification=classification
+        )
+
+        # Make request to Ollama
+        response = requests.post(
+            f'{OLLAMA_HOST}/api/generate',
+            json={
+                'model': OLLAMA_MODEL,
+                'prompt': prompt,
+                'images': [image_data],
+                'stream': False
+            }
+        )
+
+        if response.status_code == 200:
+            result = response.json()
+            subtags = result['response'].strip()
+            return subtags
+        else:
+            print(f"Error from Ollama for sub-tags generation: {response.status_code}")
+            return ""
+
+    except Exception as e:
+        print(f"Error generating sub-tags: {e}")
+        return ""
 
 def create_playlist_and_add_video(classification, video_url):
     """Create a playlist based on classification and add video to it."""
@@ -693,9 +986,7 @@ if __name__ == '__main__':
 
         # Load existing classifications
         existing_classifications = load_existing_classifications()
-        print(
-            f"Loaded {
-                len(existing_classifications)} existing classifications: {existing_classifications}")
+        print(f"Loaded {len(existing_classifications)} existing classifications: {existing_classifications}")
 
         # Initialize browser
         if not init_browser():
@@ -714,18 +1005,48 @@ if __name__ == '__main__':
         while not quit:
             try:
                 # Extract video information using web scraping
-                video_title, video_url, thumbnail_path = get_video_info()
+                video_data = get_video_info()
+                
+                if len(video_data) == 6:  # New format with all data
+                    video_title, video_url, thumbnail_path, channel_name, video_length, video_date = video_data
+                else:  # Fallback to old format
+                    video_title, video_url, thumbnail_path = video_data[:3]
+                    channel_name, video_length, video_date = "Unknown Channel", 0, "Unknown Date"
 
                 if video_title and video_url and thumbnail_path:
+                    # Convert thumbnail to base64 for storage
+                    image_data = ""
+                    try:
+                        with open(thumbnail_path, "rb") as image_file:
+                            image_data = base64.b64encode(image_file.read()).decode('utf-8')
+                        print(f"Thumbnail converted to base64 ({len(image_data)} characters)")
+                    except Exception as e:
+                        print(f"Error converting thumbnail to base64: {e}")
+                        image_data = ""
+
+                    # Detect language using Ollama
+                    print(f"\nDetecting language for video: {video_title}")
+                    language = detect_video_language(video_title, thumbnail_path)
+                    print(f"Language detected: {language}")
+                    
                     # Classify video using Ollama
-                    print(f"\nClassifying video: {video_title}")
+                    print(f"Classifying video: {video_title}")
                     classification = classify_video_with_ollama(
                         video_title, thumbnail_path, existing_classifications)
                     print(f"Classification result: {classification}")
 
-                    # Save classification to CSV
+                    # Let's be gentle with the API
+                    time.sleep(1)
+
+                    # Generate detailed sub-tags using Ollama
+                    print(f"Generating detailed sub-tags for video: {video_title}")
+                    detailed_subtags = generate_detailed_subtags(video_title, thumbnail_path, classification)
+                    print(f"Detailed sub-tags: {detailed_subtags}")
+
+                    # Save classification to CSV with new data including image data
                     save_classification(
-                        video_title, video_url, thumbnail_path, classification)
+                        video_title, video_url, thumbnail_path, classification, 
+                        language, channel_name, video_length, video_date, detailed_subtags, image_data)
 
                     # Update existing classifications set
                     existing_classifications.add(classification)
