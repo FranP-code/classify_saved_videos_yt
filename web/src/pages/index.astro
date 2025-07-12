@@ -1,5 +1,14 @@
 ---
+import VideoClassifierApp from '@/components/VideoClassifierApp';
 import '../styles/global.css';
+import { join } from 'path';
+import { readFileSync } from 'fs';
+import { parseCSV } from '@/utils/csvParser';
+
+ const csvPath = join(process.cwd(), '..', 'video_classifications.csv')
+    const csvContent = readFileSync(csvPath, 'utf-8');
+    const videos = parseCSV(csvContent);
+
 ---
 
 <html lang="en">
@@ -13,18 +22,6 @@ import '../styles/global.css';
 	</head>
 
 	<body class="min-h-screen bg-background">
-		<div id="app"></div>
-		
-		<script>
-			import VideoClassifierApp from '../components/VideoClassifierApp.tsx';
-			import { createRoot } from 'react-dom/client';
-			import React from 'react';
-
-			const container = document.getElementById('app');
-			if (container) {
-				const root = createRoot(container);
-				root.render(React.createElement(VideoClassifierApp));
-			}
-		</script>
+		<VideoClassifierApp client:load videos={videos}  />
 	</body>
 </html>

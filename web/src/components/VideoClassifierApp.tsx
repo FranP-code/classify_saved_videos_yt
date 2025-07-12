@@ -12,10 +12,7 @@ interface ApiResponse {
   message?: string;
 }
 
-export default function VideoClassifierApp() {
-  const [data, setData] = useState<VideoData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export default function VideoClassifierApp({ videos }: { videos: VideoData[] }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     classification: 'all',
@@ -23,35 +20,9 @@ export default function VideoClassifierApp() {
     playlist_name: 'all'
   });
 
-  // Fetch data
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch('/api/videos');
-        const result: ApiResponse = await response.json();
-
-        if (!response.ok || result.error) {
-          setError(result.message || result.error || 'Failed to load data');
-          setData([]);
-        } else {
-          setData(result.videos || []);
-          setError(null);
-        }
-      } catch (err) {
-        setError('Failed to fetch video data');
-        setData([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
   // Filter and search data
   const filteredData = useMemo(() => {
-    let result = data;
+    let result = videos;
     
     // Apply filters
     result = filterVideos(result, filters);
@@ -60,50 +31,16 @@ export default function VideoClassifierApp() {
     result = searchVideos(result, searchTerm);
     
     return result;
-  }, [data, searchTerm, filters]);
+  }, [videos, searchTerm, filters]);
 
-  const refreshData = async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const response = await fetch('/api/videos');
-      const result: ApiResponse = await response.json();
-
-      if (!response.ok || result.error) {
-        setError(result.message || result.error || 'Failed to load data');
-        setData([]);
-      } else {
-        setData(result.videos || []);
-        setError(null);
-      }
-    } catch (err) {
-      setError('Failed to fetch video data');
-      setData([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground">Loading video data...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
+  if (!videos) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
         <div className="max-w-md text-center space-y-4">
           <div className="text-6xl">📁</div>
           <h1 className="text-2xl font-bold text-destructive">CSV File Not Found</h1>
           <p className="text-muted-foreground">
-            {error}
+            It seems the <code className="bg-background px-1 rounded">video_classifications.csv</code> file is missing or not properly configured.
           </p>
           <div className="bg-muted p-4 rounded-lg text-sm text-left">
             <p className="font-medium mb-2">To fix this:</p>
@@ -113,9 +50,6 @@ export default function VideoClassifierApp() {
               <li>Refresh this page</li>
             </ol>
           </div>
-          <Button onClick={refreshData} className="mt-4">
-            Try Again
-          </Button>
         </div>
       </div>
     );
@@ -135,25 +69,25 @@ export default function VideoClassifierApp() {
         </div>
 
         {/* Stats Overview */}
-        {data.length > 0 && (
-          <StatsOverview data={data} />
+        {videos.length > 0 && (
+          <StatsOverview data={videos} />
         )}
 
         {/* Search and Filter */}
-        {data.length > 0 && (
+        {videos.length > 0 && (
           <SearchAndFilter
-            data={data}
+            data={videos}
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             filters={filters}
             onFilterChange={setFilters}
-            totalResults={data.length}
+            totalResults={videos.length}
             filteredResults={filteredData.length}
           />
         )}
 
         {/* Results */}
-        {data.length > 0 ? (
+        {videos.length > 0 ? (
           filteredData.length > 0 ? (
             <VirtualTable data={filteredData} />
           ) : (
@@ -178,12 +112,12 @@ export default function VideoClassifierApp() {
         {/* Footer */}
         <div className="text-center text-sm text-muted-foreground border-t pt-8">
           <p>
-            Powered by AI classification • {data.length} videos indexed
+            {videos.length} videos indexed
           </p>
           <Button
             variant="ghost"
             size="sm"
-            onClick={refreshData}
+            onClick={() => window.location.reload}
             className="mt-2"
           >
             Refresh Data

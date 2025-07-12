@@ -1,5 +1,5 @@
-import React, { useMemo, useRef, useState, useEffect } from 'react';
-import { Virtualizer, type VirtualizerOptions } from '@tanstack/virtual-core';
+import React, { useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import type { VideoData } from '../types/video';
 import { formatDuration, formatDate } from '../utils/csvParser';
 import { Badge } from './ui/badge';
@@ -11,41 +11,26 @@ interface VirtualTableProps {
 
 export function VirtualTable({ data }: VirtualTableProps) {
   const parentRef = useRef<HTMLDivElement>(null);
-  const [virtualizer, setVirtualizer] = useState<Virtualizer<HTMLDivElement, Element> | null>(null);
 
-  useEffect(() => {
-    if (!parentRef.current) return;
+  console.log(data);
+  const rowVirtualizer = useVirtualizer({
+    count: data.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 120,
+    overscan: 5,
+  });
 
-    const virtualizerOptions: VirtualizerOptions<HTMLDivElement, Element> = {
-      count: data.length,
-      getScrollElement: () => parentRef.current,
-      estimateSize: () => 120,
-      overscan: 5,
-    };
-
-    const newVirtualizer = new Virtualizer(virtualizerOptions);
-    setVirtualizer(newVirtualizer);
-
-    return () => {
-      newVirtualizer.destroy();
-    };
-  }, [data.length]);
-
-  const items = virtualizer?.getVirtualItems() ?? [];
-
-  if (!virtualizer) {
-    return <div>Loading...</div>;
-  }
+  const virtualItems = rowVirtualizer.getVirtualItems();
 
   return (
     <div className="border rounded-lg overflow-hidden">
       {/* Table Header */}
       <div className="bg-muted/50 border-b p-4">
         <div className="grid grid-cols-12 gap-4 text-sm font-medium text-muted-foreground">
-          <div className="col-span-3">Video</div>
+          <div className="col-span-2">Video</div>
           <div className="col-span-2">Channel</div>
           <div className="col-span-2">Classification</div>
-          <div className="col-span-1">Language</div>
+          <div className="col-span-2">Language</div>
           <div className="col-span-1">Duration</div>
           <div className="col-span-2">Date</div>
           <div className="col-span-1">Actions</div>
@@ -62,32 +47,32 @@ export function VirtualTable({ data }: VirtualTableProps) {
       >
         <div
           style={{
-            height: `${virtualizer.getTotalSize()}px`,
+            height: `${rowVirtualizer.getTotalSize()}px`,
             width: '100%',
             position: 'relative',
           }}
         >
-          {items.map((item) => {
-            const video = data[item.index];
+          {virtualItems.map((virtualItem) => {
+            const video = data[virtualItem.index];
+            console.log(data, virtualItem, video);
             if (!video) return null;
 
             return (
               <div
-                key={item.key}
-                data-index={item.index}
-                ref={virtualizer.measureElement}
+                key={virtualItem.key}
+                data-index={virtualItem.index}
                 style={{
                   position: 'absolute',
                   top: 0,
                   left: 0,
                   width: '100%',
-                  transform: `translateY(${item.start}px)`,
+                  transform: `translateY(${virtualItem.start}px)`,
                 }}
               >
                 <div className="border-b p-4 hover:bg-muted/50 transition-colors">
-                  <div className="grid grid-cols-12 gap-4 items-start">
+                  <div className="grid grid-cols-12 gap-4 items-center">
                     {/* Video Info */}
-                    <div className="col-span-3 space-y-1">
+                    <div className="col-span-2 space-y-1">
                       <h3 className="font-medium text-sm leading-tight line-clamp-2">
                         {video.video_title}
                       </h3>
@@ -114,7 +99,7 @@ export function VirtualTable({ data }: VirtualTableProps) {
                     </div>
 
                     {/* Language */}
-                    <div className="col-span-1">
+                    <div className="col-span-2">
                       <Badge variant="outline" className="text-xs">
                         {video.language}
                       </Badge>
