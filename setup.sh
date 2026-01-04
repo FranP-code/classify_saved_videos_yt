@@ -15,11 +15,11 @@ echo "✅ Python 3.11 found"
 
 # Create virtual environment
 echo "📦 Creating virtual environment..."
-python3 -m venv venv
+python3 -m venv prod
 
 # Activate virtual environment
 echo "🔧 Activating virtual environment..."
-source venv/bin/activate
+source prod/bin/activate
 
 # Install requirements
 echo "📥 Installing Python dependencies..."

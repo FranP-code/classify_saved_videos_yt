@@ -17,6 +17,7 @@ An AI-powered tool that automatically classifies YouTube videos in your "Watch L
 ## Quick Start
 
 ### Prerequisites
+
 - Python 3.11.10+
 - Ollama installed locally
 - Chrome or Chromium browser
@@ -26,25 +27,28 @@ An AI-powered tool that automatically classifies YouTube videos in your "Watch L
 1. **Install Ollama**: Download from [https://ollama.ai](https://ollama.ai)
 
 2. **Pull Required Models**:
+
    ```bash
    ollama pull qwen2.5vl:7b
    ollama pull gemma2:2b
    ```
 
 3. **Start Ollama Service**:
+
    ```bash
    ollama serve
    ```
 
 4. **Clone and Setup Project**:
+
    ```bash
    git clone <repository-url>
    cd youtube-video-classifier
-   
+
    # Create virtual environment
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   
+   python -m venv prod
+   source prod/bin/activate  # On Windows: prod\Scripts\activate
+
    # Install dependencies
    pip install -r requirements.txt
    ```
@@ -127,24 +131,28 @@ The script creates a comprehensive CSV file with the following columns:
 ## Features in Detail
 
 ### AI Classification System
+
 - **Primary Model**: Qwen2.5-VL 7B for high-quality vision-language analysis
 - **Fallback Model**: Gemma2 2B for faster processing when primary model is slow
 - **Timeout Management**: Automatically increases timeout periods if models are struggling
 - **Continuous Retry**: Keeps trying until successful or user cancels
 
 ### Data Extraction
+
 - **Video Metadata**: Title, URL, duration, upload date
 - **Channel Information**: Name and link to channel
 - **Thumbnail Capture**: Screenshots saved as base64 in CSV
 - **Playlist Context**: Source playlist name and URL
 
 ### Browser Automation
+
 - **Multiple Chrome Paths**: Automatically finds Chrome/Chromium installation
 - **WebDriver Management**: Handles chromedriver setup and fallbacks
 - **Robust Selectors**: Multiple CSS selectors for reliable element finding
 - **Error Recovery**: Graceful handling of UI changes and loading delays
 
 ### User Experience
+
 - **Rich Console Output**: Colored logging with emojis and status indicators
 - **Progress Tracking**: Clear indication of current processing status
 - **Safe Exit**: Press 'q' at any time to cleanly stop processing
@@ -155,6 +163,7 @@ The script creates a comprehensive CSV file with the following columns:
 Before running the main script, you can test individual components:
 
 1. **Test Ollama Connection**:
+
    ```python
    import requests
    response = requests.get('http://localhost:11434/api/tags')
@@ -172,21 +181,25 @@ Before running the main script, you can test individual components:
 ### Common Issues
 
 **Ollama Connection Error**:
+
 - Ensure Ollama is running: `ollama serve`
 - Check the host URL in config.ini
 - Verify models are installed: `ollama list`
 
 **Browser Issues**:
+
 - Install Chrome or Chromium
 - Update chromedriver if needed
 - Check if browser is in PATH
 
 **Model Timeout**:
+
 - The script automatically handles timeouts with fallback
 - Consider increasing timeout values in config.ini
 - Ensure sufficient system resources
 
 **Selenium Errors**:
+
 - YouTube may have changed their HTML structure
 - Check for browser updates
 - Verify you're logged into YouTube
