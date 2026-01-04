@@ -30,7 +30,7 @@ if ! command -v ollama &> /dev/null; then
     echo "❌ Ollama not found. Please install Ollama from https://ollama.ai"
     echo "   After installation, run:"
     echo "   1. ollama serve"
-    echo "   2. ollama pull qwen3-vl:8b"
+    echo "   2. ollama pull qwen3-vl:4b"
     exit 1
 fi
 
@@ -45,7 +45,7 @@ fi
 
 # Pull Qwen3VL model
 echo "🤖 Pulling Qwen3VL model..."
-ollama pull qwen3-vl:8b
+ollama pull qwen3-vl:4b
 
 # Test setup
 echo "🧪 Testing setup..."
