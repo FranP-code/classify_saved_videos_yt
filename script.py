@@ -44,8 +44,8 @@ OLLAMA_HOST = config.get(
     'DEFAULT',
     'ollama_host',
     fallback='http://localhost:11434')
-OLLAMA_MODEL = config.get('DEFAULT', 'ollama_model', fallback='qwen2.5vl:7b')
-OLLAMA_FALLBACK_MODEL = config.get('DEFAULT', 'ollama_fallback_model', fallback='gemma2:2b')
+OLLAMA_MODEL = config.get('DEFAULT', 'ollama_model')
+OLLAMA_FALLBACK_MODEL = config.get('DEFAULT', 'ollama_fallback_model')
 
 # Timeout settings
 LLM_PRIMARY_TIMEOUT = config.getint('DEFAULT', 'llm_primary_timeout', fallback=60)

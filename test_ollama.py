@@ -12,7 +12,7 @@ def load_config():
     config.read('config.ini')
 
     ollama_host = config.get('DEFAULT', 'ollama_host', fallback='http://ollama:11434')
-    ollama_model = config.get('DEFAULT', 'ollama_model', fallback='qwen2.5vl:7b')
+    ollama_model = config.get('DEFAULT', 'ollama_model')
 
     return ollama_host, ollama_model
 
