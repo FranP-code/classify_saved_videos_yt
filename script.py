@@ -853,10 +853,10 @@ def get_video_info_web():
 
         log_info(f"Extracted video URL: {video_url}", "🔗")
 
-        # Take screenshot of video thumbnail
+        # Take screenshot of video thumbnail and get thumbnail URL
+        thumbnail_url = None
+        thumbnail_path = "temp_thumbnail.png"
         try:
-            thumbnail_path = "temp_thumbnail.png"
-
             # Try to find the video thumbnail image
             thumbnail_selectors = [
                 "img#img",
@@ -870,6 +870,8 @@ def get_video_info_web():
                 try:
                     thumbnail_element = video_element.find_element(
                         By.CSS_SELECTOR, selector)
+                    # Get the thumbnail URL from src attribute
+                    thumbnail_url = thumbnail_element.get_attribute("src")
                     thumbnail_element.screenshot(thumbnail_path)
                     screenshot_taken = True
                     break
@@ -889,7 +891,22 @@ def get_video_info_web():
             except BaseException:
                 thumbnail_path = None
 
-        return video_title, video_url, thumbnail_path, channel_name, channel_link, video_length, video_date
+        # If we couldn't get thumbnail URL, construct it from video URL
+        if not thumbnail_url and video_url:
+            try:
+                # Extract video ID and construct thumbnail URL
+                if 'youtu.be/' in video_url:
+                    video_id = video_url.split('youtu.be/')[-1].split('?')[0]
+                elif 'v=' in video_url:
+                    video_id = video_url.split('v=')[-1].split('&')[0]
+                else:
+                    video_id = None
+                if video_id:
+                    thumbnail_url = f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg"
+            except:
+                thumbnail_url = None
+
+        return video_title, video_url, thumbnail_path, thumbnail_url, channel_name, channel_link, video_length, video_date
 
     except Exception as e:
         log_error(f"Error extracting video info: {e}")
@@ -1023,9 +1040,9 @@ def init_csv():
     if not os.path.exists(classifications_csv):
         with open(classifications_csv, 'w', newline='', encoding='utf-8') as file:
             writer = csv.writer(file)
-            writer.writerow(['video_title', 'video_url', 'thumbnail_url', 'classification', 
-                           'language', 'channel_name', 'channel_link', 'video_length_seconds', 'video_date', 
-                           'detailed_subtags', 'playlist_name', 'playlist_link', 'image_data', 'timestamp'])
+            writer.writerow(['Video Title', 'Video URL', 'Thumbnail URL', 'Classification', 
+                           'Language', 'Channel Name', 'Channel URL', 'Duration (seconds)', 'Upload Date', 
+                           'Tags', 'Playlist Name', 'Playlist URL', 'Classified At'])
         log_success(f"Created {classifications_csv}", "📊")
 
 
@@ -1042,14 +1059,16 @@ def load_existing_classifications():
         return set()
 
 
-def save_classification(video_title, video_url, thumbnail_url, classification, language, channel_name, channel_link, video_length, video_date, detailed_subtags, playlist_name, playlist_link, image_data):
+def save_classification(video_title, video_url, thumbnail_url, classification, language, channel_name, channel_link, video_length, video_date, detailed_subtags, playlist_name, playlist_link):
     """Save a video classification to CSV."""
     try:
+        from datetime import datetime, timezone
+        iso_timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
         with open(classifications_csv, 'a', newline='', encoding='utf-8') as file:
             writer = csv.writer(file)
             writer.writerow([video_title, video_url, thumbnail_url, classification, 
                            language, channel_name, channel_link, video_length, video_date, detailed_subtags, 
-                           playlist_name, playlist_link, image_data, time.strftime('%Y-%m-%d %H:%M:%S')])
+                           playlist_name, playlist_link, iso_timestamp])
         log_success(f"Saved classification: {video_title} -> {classification}", "💾")
     except Exception as e:
         log_error(f"Error saving classification: {e}")
@@ -1197,26 +1216,21 @@ if __name__ == '__main__':
                 # Extract video information using web scraping
                 video_data = get_video_info()
                 
-                if len(video_data) == 7:  # New format with all data including channel_link
+                if len(video_data) == 8:  # New format with thumbnail_url
+                    video_title, video_url, thumbnail_path, thumbnail_url, channel_name, channel_link, video_length, video_date = video_data
+                elif len(video_data) == 7:  # Old format with all data including channel_link
                     video_title, video_url, thumbnail_path, channel_name, channel_link, video_length, video_date = video_data
+                    thumbnail_url = None
                 elif len(video_data) == 6:  # Old format with channel_name but no channel_link
                     video_title, video_url, thumbnail_path, channel_name, video_length, video_date = video_data
                     channel_link = "Unknown Channel Link"
+                    thumbnail_url = None
                 else:  # Fallback to old format
                     video_title, video_url, thumbnail_path = video_data[:3]
                     channel_name, channel_link, video_length, video_date = "Unknown Channel", "Unknown Channel Link", 0, "Unknown Date"
+                    thumbnail_url = None
 
                 if video_title and video_url and thumbnail_path:
-                    # Convert thumbnail to base64 for storage
-                    image_data = ""
-                    try:
-                        with open(thumbnail_path, "rb") as image_file:
-                            image_data = base64.b64encode(image_file.read()).decode('utf-8')
-                        log_process(f"Thumbnail converted to base64 ({len(image_data)} characters)", "📸", True)
-                    except Exception as e:
-                        log_error(f"Error converting thumbnail to base64: {e}")
-                        image_data = ""
-
                     # Detect language using Ollama with fallback
                     log_process(f"Detecting language for video: {video_title}", "🌐", True)
                     language = detect_video_language(video_title, thumbnail_path)
@@ -1238,9 +1252,9 @@ if __name__ == '__main__':
 
                     # Save classification to CSV with new data including channel link
                     save_classification(
-                        video_title, video_url, thumbnail_path, classification, 
+                        video_title, video_url, thumbnail_url, classification, 
                         language, channel_name, channel_link, video_length, video_date, detailed_subtags, 
-                        playlist_name, playlist_link, image_data)
+                        playlist_name, playlist_link)
 
                     # Update existing classifications set
                     existing_classifications.add(classification)
