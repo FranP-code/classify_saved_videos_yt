@@ -46,6 +46,7 @@ OLLAMA_HOST = config.get(
     fallback='http://localhost:11434')
 OLLAMA_MODEL = config.get('DEFAULT', 'ollama_model')
 OLLAMA_FALLBACK_MODEL = config.get('DEFAULT', 'ollama_fallback_model')
+OLLAMA_LANGUAGE_MODEL = config.get('DEFAULT', 'ollama_language_model', fallback='qwen3-vl:2b')
 
 # Timeout settings
 LLM_PRIMARY_TIMEOUT = config.getint('DEFAULT', 'llm_primary_timeout')
@@ -428,7 +429,7 @@ def check_ollama_models():
         return False
 
 
-def call_ollama_with_fallback(prompt, image_data, purpose="processing"):
+def call_ollama_with_fallback(prompt, image_data, purpose="processing", models_override=None, base_timeouts_override=None):
     """
     Call Ollama with timeout and fallback support using continuous loop.
     
@@ -440,8 +441,9 @@ def call_ollama_with_fallback(prompt, image_data, purpose="processing"):
     Returns:
         str: The response from the LLM, or empty string if manually cancelled
     """
-    models = [OLLAMA_MODEL, OLLAMA_FALLBACK_MODEL]
-    base_timeouts = [LLM_PRIMARY_TIMEOUT, LLM_FALLBACK_TIMEOUT]
+    # Allow overriding the models/timeouts for specific calls (e.g., language detection)
+    models = models_override if models_override else [OLLAMA_MODEL, OLLAMA_FALLBACK_MODEL]
+    base_timeouts = base_timeouts_override if base_timeouts_override else [LLM_PRIMARY_TIMEOUT, LLM_FALLBACK_TIMEOUT]
     
     attempt = 0
     while not quit:  # Continue until we get a response or user quits
@@ -509,8 +511,10 @@ def detect_video_language(video_title, thumbnail_path):
         # Prepare the prompt
         prompt = LANGUAGE_DETECTION_PROMPT.format(video_title=video_title)
 
-        # Call with fallback support
-        language = call_ollama_with_fallback(prompt, image_data, "language detection")
+        # Call with fallback support using the dedicated language model first
+        language_models = [OLLAMA_LANGUAGE_MODEL, OLLAMA_FALLBACK_MODEL]
+        language_timeouts = [LLM_PRIMARY_TIMEOUT, LLM_FALLBACK_TIMEOUT]
+        language = call_ollama_with_fallback(prompt, image_data, "language detection", models_override=language_models, base_timeouts_override=language_timeouts)
         
         return language if language else "Unknown"
 

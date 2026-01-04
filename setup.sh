@@ -46,6 +46,9 @@ fi
 # Pull Qwen3VL model
 echo "🤖 Pulling Qwen3VL model..."
 ollama pull qwen3-vl:4b
+# Pull language detection model
+echo "🤖 Pulling language-detection model..."
+ollama pull qwen3-vl:2b
 
 # Test setup
 echo "🧪 Testing setup..."
