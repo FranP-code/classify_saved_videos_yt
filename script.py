@@ -48,8 +48,8 @@ OLLAMA_MODEL = config.get('DEFAULT', 'ollama_model')
 OLLAMA_FALLBACK_MODEL = config.get('DEFAULT', 'ollama_fallback_model')
 
 # Timeout settings
-LLM_PRIMARY_TIMEOUT = config.getint('DEFAULT', 'llm_primary_timeout', fallback=60)
-LLM_FALLBACK_TIMEOUT = config.getint('DEFAULT', 'llm_fallback_timeout', fallback=10)
+LLM_PRIMARY_TIMEOUT = config.getint('DEFAULT', 'llm_primary_timeout')
+LLM_FALLBACK_TIMEOUT = config.getint('DEFAULT', 'llm_fallback_timeout')
 
 CLASSIFICATION_PROMPT = """
 Please classify this YouTube video based on its title and thumbnail.
