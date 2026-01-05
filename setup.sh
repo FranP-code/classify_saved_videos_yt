@@ -15,11 +15,11 @@ echo "✅ Python 3.11 found"
 
 # Create virtual environment
 echo "📦 Creating virtual environment..."
-python3 -m venv venv
+python3 -m venv prod
 
 # Activate virtual environment
 echo "🔧 Activating virtual environment..."
-source venv/bin/activate
+source prod/bin/activate
 
 # Install requirements
 echo "📥 Installing Python dependencies..."
@@ -30,7 +30,7 @@ if ! command -v ollama &> /dev/null; then
     echo "❌ Ollama not found. Please install Ollama from https://ollama.ai"
     echo "   After installation, run:"
     echo "   1. ollama serve"
-    echo "   2. ollama pull qwen2.5-vl:7b"
+    echo "   2. ollama pull qwen3-vl:4b"
     exit 1
 fi
 
@@ -43,9 +43,12 @@ if ! curl -s http://localhost:11434/api/tags &> /dev/null; then
     sleep 5
 fi
 
-# Pull Qwen2.5VL model
-echo "🤖 Pulling Qwen2.5VL model..."
-ollama pull qwen2.5vl:7b
+# Pull Qwen3VL model
+echo "🤖 Pulling Qwen3VL model..."
+ollama pull qwen3-vl:4b
+# Pull language detection model
+echo "🤖 Pulling language-detection model..."
+ollama pull qwen3-vl:2b
 
 # Test setup
 echo "🧪 Testing setup..."

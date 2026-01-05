@@ -44,12 +44,13 @@ OLLAMA_HOST = config.get(
     'DEFAULT',
     'ollama_host',
     fallback='http://localhost:11434')
-OLLAMA_MODEL = config.get('DEFAULT', 'ollama_model', fallback='qwen2.5vl:7b')
-OLLAMA_FALLBACK_MODEL = config.get('DEFAULT', 'ollama_fallback_model', fallback='gemma2:2b')
+OLLAMA_MODEL = config.get('DEFAULT', 'ollama_model')
+OLLAMA_FALLBACK_MODEL = config.get('DEFAULT', 'ollama_fallback_model')
+OLLAMA_LANGUAGE_MODEL = config.get('DEFAULT', 'ollama_language_model', fallback='qwen3-vl:2b')
 
 # Timeout settings
-LLM_PRIMARY_TIMEOUT = config.getint('DEFAULT', 'llm_primary_timeout', fallback=60)
-LLM_FALLBACK_TIMEOUT = config.getint('DEFAULT', 'llm_fallback_timeout', fallback=10)
+LLM_PRIMARY_TIMEOUT = config.getint('DEFAULT', 'llm_primary_timeout')
+LLM_FALLBACK_TIMEOUT = config.getint('DEFAULT', 'llm_fallback_timeout')
 
 CLASSIFICATION_PROMPT = """
 Please classify this YouTube video based on its title and thumbnail.
@@ -428,7 +429,7 @@ def check_ollama_models():
         return False
 
 
-def call_ollama_with_fallback(prompt, image_data, purpose="processing"):
+def call_ollama_with_fallback(prompt, image_data, purpose="processing", models_override=None, base_timeouts_override=None):
     """
     Call Ollama with timeout and fallback support using continuous loop.
     
@@ -440,8 +441,9 @@ def call_ollama_with_fallback(prompt, image_data, purpose="processing"):
     Returns:
         str: The response from the LLM, or empty string if manually cancelled
     """
-    models = [OLLAMA_MODEL, OLLAMA_FALLBACK_MODEL]
-    base_timeouts = [LLM_PRIMARY_TIMEOUT, LLM_FALLBACK_TIMEOUT]
+    # Allow overriding the models/timeouts for specific calls (e.g., language detection)
+    models = models_override if models_override else [OLLAMA_MODEL, OLLAMA_FALLBACK_MODEL]
+    base_timeouts = base_timeouts_override if base_timeouts_override else [LLM_PRIMARY_TIMEOUT, LLM_FALLBACK_TIMEOUT]
     
     attempt = 0
     while not quit:  # Continue until we get a response or user quits
@@ -509,8 +511,10 @@ def detect_video_language(video_title, thumbnail_path):
         # Prepare the prompt
         prompt = LANGUAGE_DETECTION_PROMPT.format(video_title=video_title)
 
-        # Call with fallback support
-        language = call_ollama_with_fallback(prompt, image_data, "language detection")
+        # Call with fallback support using the dedicated language model first
+        language_models = [OLLAMA_LANGUAGE_MODEL, OLLAMA_FALLBACK_MODEL]
+        language_timeouts = [LLM_PRIMARY_TIMEOUT, LLM_FALLBACK_TIMEOUT]
+        language = call_ollama_with_fallback(prompt, image_data, "language detection", models_override=language_models, base_timeouts_override=language_timeouts)
         
         return language if language else "Unknown"
 
@@ -853,10 +857,10 @@ def get_video_info_web():
 
         log_info(f"Extracted video URL: {video_url}", "🔗")
 
-        # Take screenshot of video thumbnail
+        # Take screenshot of video thumbnail and get thumbnail URL
+        thumbnail_url = None
+        thumbnail_path = "temp_thumbnail.png"
         try:
-            thumbnail_path = "temp_thumbnail.png"
-
             # Try to find the video thumbnail image
             thumbnail_selectors = [
                 "img#img",
@@ -870,6 +874,8 @@ def get_video_info_web():
                 try:
                     thumbnail_element = video_element.find_element(
                         By.CSS_SELECTOR, selector)
+                    # Get the thumbnail URL from src attribute
+                    thumbnail_url = thumbnail_element.get_attribute("src")
                     thumbnail_element.screenshot(thumbnail_path)
                     screenshot_taken = True
                     break
@@ -889,7 +895,22 @@ def get_video_info_web():
             except BaseException:
                 thumbnail_path = None
 
-        return video_title, video_url, thumbnail_path, channel_name, channel_link, video_length, video_date
+        # If we couldn't get thumbnail URL, construct it from video URL
+        if not thumbnail_url and video_url:
+            try:
+                # Extract video ID and construct thumbnail URL
+                if 'youtu.be/' in video_url:
+                    video_id = video_url.split('youtu.be/')[-1].split('?')[0]
+                elif 'v=' in video_url:
+                    video_id = video_url.split('v=')[-1].split('&')[0]
+                else:
+                    video_id = None
+                if video_id:
+                    thumbnail_url = f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg"
+            except:
+                thumbnail_url = None
+
+        return video_title, video_url, thumbnail_path, thumbnail_url, channel_name, channel_link, video_length, video_date
 
     except Exception as e:
         log_error(f"Error extracting video info: {e}")
@@ -1023,9 +1044,9 @@ def init_csv():
     if not os.path.exists(classifications_csv):
         with open(classifications_csv, 'w', newline='', encoding='utf-8') as file:
             writer = csv.writer(file)
-            writer.writerow(['video_title', 'video_url', 'thumbnail_url', 'classification', 
-                           'language', 'channel_name', 'channel_link', 'video_length_seconds', 'video_date', 
-                           'detailed_subtags', 'playlist_name', 'playlist_link', 'image_data', 'timestamp'])
+            writer.writerow(['Video Title', 'Video URL', 'Thumbnail URL', 'Classification', 
+                           'Language', 'Channel Name', 'Channel URL', 'Duration (seconds)', 'Upload Date', 
+                           'Tags', 'Playlist Name', 'Playlist URL', 'Classified At'])
         log_success(f"Created {classifications_csv}", "📊")
 
 
@@ -1042,14 +1063,16 @@ def load_existing_classifications():
         return set()
 
 
-def save_classification(video_title, video_url, thumbnail_url, classification, language, channel_name, channel_link, video_length, video_date, detailed_subtags, playlist_name, playlist_link, image_data):
+def save_classification(video_title, video_url, thumbnail_url, classification, language, channel_name, channel_link, video_length, video_date, detailed_subtags, playlist_name, playlist_link):
     """Save a video classification to CSV."""
     try:
+        from datetime import datetime, timezone
+        iso_timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
         with open(classifications_csv, 'a', newline='', encoding='utf-8') as file:
             writer = csv.writer(file)
             writer.writerow([video_title, video_url, thumbnail_url, classification, 
                            language, channel_name, channel_link, video_length, video_date, detailed_subtags, 
-                           playlist_name, playlist_link, image_data, time.strftime('%Y-%m-%d %H:%M:%S')])
+                           playlist_name, playlist_link, iso_timestamp])
         log_success(f"Saved classification: {video_title} -> {classification}", "💾")
     except Exception as e:
         log_error(f"Error saving classification: {e}")
@@ -1197,26 +1220,21 @@ if __name__ == '__main__':
                 # Extract video information using web scraping
                 video_data = get_video_info()
                 
-                if len(video_data) == 7:  # New format with all data including channel_link
+                if len(video_data) == 8:  # New format with thumbnail_url
+                    video_title, video_url, thumbnail_path, thumbnail_url, channel_name, channel_link, video_length, video_date = video_data
+                elif len(video_data) == 7:  # Old format with all data including channel_link
                     video_title, video_url, thumbnail_path, channel_name, channel_link, video_length, video_date = video_data
+                    thumbnail_url = None
                 elif len(video_data) == 6:  # Old format with channel_name but no channel_link
                     video_title, video_url, thumbnail_path, channel_name, video_length, video_date = video_data
                     channel_link = "Unknown Channel Link"
+                    thumbnail_url = None
                 else:  # Fallback to old format
                     video_title, video_url, thumbnail_path = video_data[:3]
                     channel_name, channel_link, video_length, video_date = "Unknown Channel", "Unknown Channel Link", 0, "Unknown Date"
+                    thumbnail_url = None
 
                 if video_title and video_url and thumbnail_path:
-                    # Convert thumbnail to base64 for storage
-                    image_data = ""
-                    try:
-                        with open(thumbnail_path, "rb") as image_file:
-                            image_data = base64.b64encode(image_file.read()).decode('utf-8')
-                        log_process(f"Thumbnail converted to base64 ({len(image_data)} characters)", "📸", True)
-                    except Exception as e:
-                        log_error(f"Error converting thumbnail to base64: {e}")
-                        image_data = ""
-
                     # Detect language using Ollama with fallback
                     log_process(f"Detecting language for video: {video_title}", "🌐", True)
                     language = detect_video_language(video_title, thumbnail_path)
@@ -1238,9 +1256,9 @@ if __name__ == '__main__':
 
                     # Save classification to CSV with new data including channel link
                     save_classification(
-                        video_title, video_url, thumbnail_path, classification, 
+                        video_title, video_url, thumbnail_url, classification, 
                         language, channel_name, channel_link, video_length, video_date, detailed_subtags, 
-                        playlist_name, playlist_link, image_data)
+                        playlist_name, playlist_link)
 
                     # Update existing classifications set
                     existing_classifications.add(classification)

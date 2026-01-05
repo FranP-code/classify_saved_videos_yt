@@ -1,27 +1,27 @@
 ---
+import VideoClassifierApp from '@/components/VideoClassifierApp';
 import '../styles/global.css';
-// Component Imports
-import Button from '../components/Button.astro';
-import {Button as ShadcnButton} from '../components/ui/button.tsx';
+import { join } from 'path';
+import { readFileSync } from 'fs';
+import { parseCSV } from '@/utils/csvParser';
 
-// Full Astro Component Syntax:
-// https://docs.astro.build/basics/astro-components/
+ const csvPath = join(process.cwd(), '..', 'video_classifications.csv')
+    const csvContent = readFileSync(csvPath, 'utf-8');
+    const videos = parseCSV(csvContent);
+
 ---
 
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<meta name="generator" content={Astro.generator} />
-		<title>Astro + TailwindCSS</title>
+		<title>YouTube Video Classifier</title>
+		<meta name="description" content="AI-powered YouTube video classification and management platform" />
 	</head>
 
-	<body>
-		<div class="grid place-items-center h-screen content-center">
-			<Button>Tailwind Button in Astro!</Button>
-			<a href="/markdown-page" class="p-4 underline">Markdown is also supported...</a>
-			<ShadcnButton>Shadcn Button</ShadcnButton>
-		</div>
+	<body class="min-h-screen bg-background">
+		<VideoClassifierApp client:only videos={videos}  />
 	</body>
 </html>
